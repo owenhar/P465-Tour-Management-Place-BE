@@ -137,6 +137,17 @@ app.delete('/places/:id', async (req, res) => {
     }
 })
 
+// Get 6 random places for the home screen
+app.get('/places/home', async (req, res) => {
+    try{
+        const randomPlaces = await Place.aggregate([{ $sample: { size: 6 } }]);
+        res.json({ "message": "6 Random Places Found", randomPlaces });
+    } catch (error) {
+        console.error(error);
+        res.json({ "error": "Internal Server Error" });
+    }
+})
+
 // Search Route with Autocomplete Suggestions
 app.get('/places/search', async (req, res) => {
     try{
@@ -185,7 +196,6 @@ app.get('/hotels/:id', async (req, res) => {
 app.get('/flights/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        // Assuming you have a Flight model
         const flight = await Flight.findById(id);
         if (!flight) {
             return res.json({ "message": "Flight not found" });
@@ -201,7 +211,6 @@ app.get('/flights/:id', async (req, res) => {
 app.get('/things-to-do/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        // Assuming you have a ThingsToDo model
         const thingToDo = await ThingsToDo.findById(id);
         if (!thingToDo) {
             return res.json({ "message": "Thing to do not found" });

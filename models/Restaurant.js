@@ -19,6 +19,10 @@ const restaurantSchema = new mongoose.Schema({
         default: 0
     },
     description: String,
+    favorited: {
+        type: String,
+        default: "No"
+    },
     ratings: {
         type: Number,
         default: 0

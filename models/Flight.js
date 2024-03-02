@@ -25,6 +25,10 @@ const flightSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    favorited: {
+        type: String,
+        default: "No"
+    },
 }, { timestamps: true });
 
 module.exports = mongoose.model("Flight", flightSchema);
