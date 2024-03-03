@@ -92,10 +92,6 @@ app.get('/places/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const place = await Place.findById(id)
-            .populate('restaurants')
-            .populate('hotels')
-            .populate('flights')
-            .populate('thingsToDo');
 
         if (!place) {
             return res.json({ "message": "Place not found" });
@@ -138,7 +134,7 @@ app.delete('/places/:id', async (req, res) => {
 })
 
 // Get 6 random places for the home screen
-app.get('/places/home', async (req, res) => {
+app.get('/place/home', async (req, res) => {
     try{
         const randomPlaces = await Place.aggregate([{ $sample: { size: 6 } }]);
         res.json({ "message": "6 Random Places Found", randomPlaces });
@@ -222,4 +218,4 @@ app.get('/things-to-do/:id', async (req, res) => {
     }
 });
 
-app.listen(3000);
+app.listen(3001);
