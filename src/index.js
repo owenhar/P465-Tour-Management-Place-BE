@@ -145,12 +145,11 @@ app.get('/place/home', async (req, res) => {
 })
 
 // Search Route with Autocomplete Suggestions
-app.get('/places/search', async (req, res) => {
+app.get('/place/search', async (req, res) => {
     try{
         const query = req.query.q;
         const places = await Place.find({ searchTags: { $regex: query, $options: 'i' } });
-        const suggestions = places.map(place => place.name);
-        res.json({ "message": "Places retrieved successfully", suggestions });
+        res.json({ "message": "Places retrieved successfully", places });
     } catch (error) {
         console.error(error);
         res.json({ "error": "Internal Server Error" });
