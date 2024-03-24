@@ -6,12 +6,14 @@ const flightSchema = new mongoose.Schema({
         unique: true,
         required: true
     },
-    toLocation: {
-        type: String,
+    source: {
+        type: mongoose.Schema.Types.ObjectID,
+        ref:'Place',
         required: true
     },
-    fromLocation: {
-        type: String,
+    destination: {
+        type: mongoose.Schema.Types.ObjectID,
+        ref:'Place',
         required: true
     },
     miles: {
