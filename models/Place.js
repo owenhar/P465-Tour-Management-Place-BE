@@ -17,8 +17,24 @@ const placeSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    latitude:{
+        type: Number,
+        default: 0
+    },
+    longitude:{
+        type: Number,
+        default: 0
+    },
     pictureURL: {
         type: String,
+        validate: {
+            validator: function(v) {
+                if (!/^(ftp|http|https):\/\/[^ "]+$/.test(v)) {
+                    throw new Error("PictureURL format is incorrect");
+                }
+                return true;
+            }
+        },
         default: ""
     },
     placeID: {
@@ -28,9 +44,10 @@ const placeSchema = new mongoose.Schema({
     },
     description: String,
     favorited: {
-        type: String,
-        default: "No"
+        type: Boolean,
+        default: false
     },
+
     ratings: {
         type: Number,
         default: 0

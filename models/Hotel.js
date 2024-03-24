@@ -1,17 +1,14 @@
 const mongoose = require("mongoose");
 
 const hotelSchema = new mongoose.Schema({
-    hotelID: {
-        type: String,
-        unique: true,
-        required: true
-    },
+    
     name: {
         type: String,
         required: true
     },
     location: {
-        type: String,
+        type: mongoose.Schema.Types.ObjectID,
+        ref:'Place',
         required: true
     },
     pictureURL: {
@@ -21,6 +18,11 @@ const hotelSchema = new mongoose.Schema({
     price: {
         type: Number,
         default: 0
+    },
+    hotelID: {
+        type: String,
+        unique: true,
+        required: true
     },
     description: String,
     ratings: {

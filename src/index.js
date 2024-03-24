@@ -2,9 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const Place = require('../models/Place')
+const Hotel = require('../models/Hotel')
 
-mongoose.connect("mongodb://10.1.1.109/admin").then(() => console.log("MongoDB connected!"))
-
+mongoose.connect("mongodb://localhost:27017/").then(() => console.log("MongoDB connected!"))
 const app = express();
 app.use(cors())
 app.use(express.json())
@@ -14,9 +14,11 @@ app.get('/', (req, res) => {
 })
 
 const genPlaceID = (city, state, country) => {
-    return `${city}-${state}--${country}`;
+    return 
 }
-
+const genHotelID = (name, location)=>{
+    return `${name}-${location.city}`;
+}
 // Helper function to generate search tags
 const generateSearchTags = (name, city, state, country) => {
     const tags = [];
@@ -28,6 +30,7 @@ const generateSearchTags = (name, city, state, country) => {
 
 // Get a random place
 app.get('/places/random', async (req, res) => {
+
     try {
         const randPlace = await Place.findOne();
         if (!randPlace) {
@@ -171,6 +174,48 @@ app.get('/restaurants/:id', async (req, res) => {
         res.json({ "error": "Internal Server Error" });
     }
 });
+app.post('/createHotel', async (req, res) => {
+    
+    
+    try{
+        const { name, location, pictureURL, description, price } = req.body;
+        if (!mongoose.Types.ObjectId.isValid(location)) {
+        return res.json({ "error": "Invalid location ID" });
+        }
+        if (!(name && location)) {
+            return res.json({ "error": "Needs fields name, location" });
+        }
+
+
+        let newHotel= await Hotel.create({
+            name,
+            location,
+            pictureURL,
+            price,
+            "hotelID": genHotelID(name, location),
+            description,
+            restaurants: [],
+            hotels: [],
+            flights: [],
+            thingsToDo: [],
+        });
+
+        res.json({ "message": "New Hotel created", "id": newHotel._id });
+    } catch (error) {
+        console.error(error);
+        res.json({ "error": "Internal Server Error" });
+    }
+})
+app.get('/hotels/', async (req,res)=>{
+    try {
+        const hotels = await Hotel.find();
+
+        res.json({ "message": "Hotels retrived successfully", hotels });
+    } catch (error) {
+        console.error(error);
+        res.json({ "error": "Internal Server Error" });
+    }
+});
 
 // Get details of a hotel by ID
 app.get('/hotels/:id', async (req, res) => {
@@ -186,6 +231,8 @@ app.get('/hotels/:id', async (req, res) => {
         res.json({ "error": "Internal Server Error" });
     }
 });
+
+
 
 // Get details of a flight by ID
 app.get('/flights/:id', async (req, res) => {
