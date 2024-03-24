@@ -3,6 +3,7 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const Place = require('../models/Place')
 const Hotel = require('../models/Hotel')
+const Flight = require('../models/Flight')
 
 mongoose.connect("mongodb://localhost:27017/").then(() => console.log("MongoDB connected!"))
 const app = express();
@@ -175,11 +176,11 @@ app.get('/restaurants/:id', async (req, res) => {
         res.json({ "error": "Internal Server Error" });
     }
 });
+
+//Create a new hotel object
 app.post('/createHotel', async (req, res) => {
-    
-    
     try{
-        const { name, location, pictureURL, description, price } = req.body;
+        const { name, location, pictureURL, description, price, ratings} = req.body;
         if (!mongoose.Types.ObjectId.isValid(location)) {
         return res.json({ "error": "Invalid location ID" });
         }
@@ -195,10 +196,8 @@ app.post('/createHotel', async (req, res) => {
             price,
             "hotelID": genHotelID(name, location),
             description,
-            restaurants: [],
-            hotels: [],
-            flights: [],
-            thingsToDo: [],
+            ratings,
+            reviews: []
         });
 
         res.json({ "message": "New Hotel created", "id": newHotel._id });
@@ -207,6 +206,8 @@ app.post('/createHotel', async (req, res) => {
         res.json({ "error": "Internal Server Error" });
     }
 })
+
+//Retrieve all hotels saved in the database
 app.get('/hotels/', async (req,res)=>{
     try {
         const hotels = await Hotel.find();
@@ -232,9 +233,28 @@ app.get('/hotels/:id', async (req, res) => {
         res.json({ "error": "Internal Server Error" });
     }
 });
+//Get a sample of 6 hotels for page
+app.get('/hotel/home', async (req, res) => {
+    try{
+        const randomHotels = await Hotel.aggregate([{ $sample: { size: 6 } }]);
+        res.json({ "message": "6 Random Places Found", randomHotels});
+    } catch (error) {
+        console.error(error);
+        res.json({ "error": "Internal Server Error" });
+    }
+})
 
 
+app.get('/flights', async (req,res)=>{
+    try {
+        const flights = await Flight.find();
 
+        res.json({ "message": "Flights retrived successfully", flights });
+    } catch (error) {
+        console.error(error);
+        res.json({ "error": "Internal Server Error" });
+    }
+})
 // Get details of a flight by ID
 app.get('/flights/:id', async (req, res) => {
     try {
@@ -249,6 +269,34 @@ app.get('/flights/:id', async (req, res) => {
         res.json({ "error": "Internal Server Error" });
     }
 });
+
+app.post('/createFlight', async (req, res) => {
+    try{
+        const { flightID, source, destination, miles, pricePerMile, price, favorited } = req.body;
+        if (!mongoose.Types.ObjectId.isValid(source) || !mongoose.Types.ObjectId.isValid(destination)) {
+        return res.json({ "error": "Invalid source or destination ID" });
+        }
+        if (!(flightID && source && destination)) {
+            return res.json({ "error": "Needs fields name, source location, destination location" });
+        }
+
+
+        let newFlight= await Flight.create({
+            flightID,
+            source,
+            destination,
+            pricePerMile,
+            price,
+            favorited
+        });
+
+        res.json({ "message": "New Flight created", "id": newFlight._id });
+    } catch (error) {
+        console.error(error);
+        res.json({ "error": "Internal Server Error" });
+    }
+})
+
 
 // Get details of a thing to do by ID
 app.get('/things-to-do/:id', async (req, res) => {
