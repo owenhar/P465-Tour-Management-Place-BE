@@ -5,7 +5,10 @@ const Place = require('../models/Place')
 const Hotel = require('../models/Hotel')
 const Flight = require('../models/Flight')
 
-mongoose.connect("mongodb://localhost:27017/").then(() => console.log("MongoDB connected!"))
+const dbUrl = process.env.DB || "mongodb://localhost:27017/"
+console.log(dbUrl);
+
+mongoose.connect(dbUrl).then(() => console.log("MongoDB connected!"))
 const app = express();
 app.use(cors())
 app.use(express.json())
@@ -312,4 +315,4 @@ app.get('/things-to-do/:id', async (req, res) => {
     }
 });
 
-app.listen(3001);
+app.listen(3002);
