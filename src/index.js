@@ -315,4 +315,33 @@ app.get('/things-to-do/:id', async (req, res) => {
     }
 });
 
+app.get('/place/recomend', async (req, res) => {
+    const ip = req.socket.remoteAddress;
+    const response = await fetch(`http://ip-api.com/json/${ip}`);
+    const json = await response.json();
+    
+    if (json.status == "fail") {
+        return res.json({"error": "error", "randomPlaces": []})
+    } else {
+        let places = await Place.find();
+        places.forEach((place) => {
+            let dist;
+            if (!place.latitude || !place.longitude) {
+                dist = 1000000
+            } else {
+                dist = Math.sqrt(Math.pow(place.latitude - json.lat, 2) + Math.pow(place.longitude - json.lon, 2))
+            }
+            place.distance = dist;
+            console.log(place.distance)
+        });
+        places = places.sort((a,b) => {
+            console.log(b.distance, a.distance, b.distance - a.distance);
+            return a.distance - b.distance});
+        return res.json(places)
+    }
+
+
+    res.json(json)
+}) 
+
 app.listen(3002);
