@@ -15,6 +15,10 @@ const hotelSchema = new mongoose.Schema({
         type: String,
         default: ""
     },
+    hotelImagesURL: [{
+        type: String,
+        default: []
+    }],
     price: {
         type: Number,
         default: 0
@@ -33,6 +37,10 @@ const hotelSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Review'
     }],
+    amenities: {
+        type: [String], 
+        default: []
+    }
 }, { timestamps: true });
 
 module.exports = mongoose.model("Hotel", hotelSchema);
