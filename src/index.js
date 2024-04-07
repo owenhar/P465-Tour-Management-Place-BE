@@ -634,4 +634,49 @@ async function verifyUserLogIn(token) {
     })
 }
 
+/**
+ * Add a review and rating for a place.
+ * 
+ * @route POST /add-review/:placeId
+ * @param {string} token - JWT token for user authentication.
+ * @param {string} reviewText - The text content of the review.
+ * @param {number} rating - The rating given for the place (1-5).
+ * @param {string} placeId - The ID of the place to add the review for.
+ * @returns {object} - Returns a JSON object indicating success or failure of the review addition operation.
+ * @author avmandal
+ */
+ app.post('/add-review/:placeId', async (req, res) => {
+    const { token ,reviewText, rating } = req.body;
+    try {
+        let user = await verifyUserLogIn(token);
+        if (user.error) {
+            return res.status(403).json(user);
+        }
+        const placeId = req.params.placeId;
+        const place = await Place.findById(placeId);
+        if (!place) {
+            return res.status(404).json({ error: 'Place not found' });
+        }
+
+        const newReview = new Review({
+            reviewText: reviewText,
+            rating: rating,
+            userId: user._id
+        });
+        await newReview.save();
+        place.reviews.push(newReview._id);
+
+        // Update average rating for the place
+        const totalRatings = place.reviews.length;
+        const currentTotalRating = place.ratings * (totalRatings - 1); // Get the current total rating
+        place.ratings = (currentTotalRating + rating) / totalRatings; // Calculate the new average rating
+
+        await place.save();
+        return res.status(200).json({ message: 'Review added successfully', place });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 app.listen(3002);
