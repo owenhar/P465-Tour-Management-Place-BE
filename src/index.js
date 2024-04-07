@@ -23,7 +23,7 @@ app.get('/', (req, res) => {
 })
 
 const genPlaceID = (city, state, country) => {
-    return 
+    return `${city}-${state}--${country}`;
 }
 const genHotelID = (name, location)=>{
     return `${name}-${location.city}`;
@@ -55,7 +55,7 @@ app.get('/places/random', async (req, res) => {
 // Create a new place
 app.post('/createPlace', async (req, res) => {
     try{
-        const { name, city, state, country, pictureURL, description, price } = req.body;
+        const { name, city, state, country, pictureURL, description, price, longitude, latitude } = req.body;
         
         if (!(name && city && state && country)) {
             return res.json({ "error": "Needs fields name, city, state, country" });
@@ -78,6 +78,8 @@ app.post('/createPlace', async (req, res) => {
             hotels: [],
             flights: [],
             thingsToDo: [],
+            longitude,
+            latitude,
         });
 
         res.json({ "message": "New Place created", "id": newPlace._id });

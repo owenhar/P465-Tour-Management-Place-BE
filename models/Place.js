@@ -47,7 +47,7 @@ const placeSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-
+    price : Number,
     ratings: {
         type: Number,
         default: 0
