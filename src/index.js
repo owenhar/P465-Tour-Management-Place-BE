@@ -4,8 +4,13 @@ const mongoose = require('mongoose');
 const Place = require('../models/Place')
 const Hotel = require('../models/Hotel')
 const Flight = require('../models/Flight')
+const jwt = require("jsonwebtoken");
+const fs = require('fs');
+const privateKey = fs.readFileSync('.private-key')
+const User = require("../models/userModel");
+const Review = require("../models/Review")
 
-const dbUrl = process.env.DB || "mongodb://localhost:27017/"
+const dbUrl = process.env.DB || "mongodb://127.0.0.1:4002/"
 console.log(dbUrl);
 
 mongoose.connect(dbUrl).then(() => console.log("MongoDB connected!"))
@@ -246,6 +251,276 @@ app.get('/hotel/home', async (req, res) => {
     }
 })
 
+/**
+ * Update details of a hotel by ID.
+ * 
+ * @route PUT /updateHotels/:id
+ * @param {string} id - The ID of the hotel to update.
+ * @param {string} name - The new name of the hotel (optional).
+ * @param {string} description - The new description of the hotel (optional).
+ * @param {number} price - The new price of the hotel (optional).
+ * @param {string} amenities - A comma-separated string of new amenities for the hotel (optional).
+ * @returns {object} - Returns a JSON object indicating success or failure of the update operation.
+ * @author avmandal
+ */
+app.put('/updateHotels/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, description, price, amenities } = req.body;
+
+        // Check if the hotel exists
+        const hotel = await Hotel.findById(id);
+        if (!hotel) {
+            return res.json({ "message": "Hotel not found" });
+        }
+
+        // Update hotel details
+        if (name) {
+            hotel.name = name;
+        }
+        if (description) {
+            hotel.description = description;
+        }
+        if (price) {
+            hotel.price = price;
+        }
+        if (amenities) {
+            const amenitiesArray = amenities.split(/\s*,\s*/).map(item => item.trim());
+            hotel.amenities = amenitiesArray;
+
+            console.log("Amenities array:", amenitiesArray)
+        }
+
+        // Save the updated hotel
+        await hotel.save();
+
+        res.json({ "message": "Hotel updated successfully", hotel });
+    } catch (error) {
+        console.error(error);
+        res.json({ "error": "Internal Server Error" });
+    }
+});
+
+
+/**
+ * Delete a hotel by ID.
+ * 
+ * @route DELETE /deleteHotels/:id
+ * @param {string} id - The ID of the hotel to delete.
+ * @returns {object} - Returns a JSON object indicating success or failure of the delete operation.
+ * @author avmandal
+ */
+app.delete('/deleteHotels/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Check if the hotel exists
+        const hotel = await Hotel.findById(id);
+        if (!hotel) {
+            return res.json({ "message": "Hotel not found" });
+        }
+
+        // Delete the hotel
+        await hotel.deleteOne();
+
+        res.json({ "message": "Hotel deleted successfully" });
+    } catch (error) {
+        console.error(error);
+        res.json({ "error": "Internal Server Error" });
+    }
+});
+
+/**
+ * Search hotels based on location, price range, and amenities.
+ * 
+ * @route GET /searchHotels
+ * @param {string} location - The ID of the location where the hotel is situated (optional).
+ * @param {number} minPrice - The minimum price of the hotel (optional).
+ * @param {number} maxPrice - The maximum price of the hotel (optional).
+ * @param {string} amenities - A comma-separated string of amenities to filter hotels (optional).
+ * @returns {object} - Returns a JSON object containing a list of hotels matching the search criteria.
+ * @author avmandal
+ */
+app.get('/searchHotels', async (req, res) => {
+    try {
+        const { location, minPrice, maxPrice, amenities } = req.query;
+
+        let query = {};
+
+        if (location) {
+            if (!mongoose.Types.ObjectId.isValid(location)) {
+                return res.status(403).json({ "error": "Invalid location" });
+            }
+            query.location = new mongoose.Types.ObjectId(location);
+        }
+
+        if (minPrice && maxPrice) {
+            query.price = { $gte: minPrice, $lte: maxPrice };
+        } else if (minPrice) {
+            query.price = { $gte: minPrice };
+        } else if (maxPrice) {
+            query.price = { $lte: maxPrice };
+        }
+
+        if (amenities) {
+            const amenitiesArray = amenities.split(/\s*,\s*/).map(item => item.trim());
+            query.amenities = { $in: amenitiesArray };
+        }
+
+        const hotels = await Hotel.find(query);
+
+        if (hotels.length === 0) {
+            return res.status(404).json({ "message": "No hotels found" });
+        }
+
+        res.json({ "message": "Hotels retrieved successfully", hotels });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ "error": "Internal Server Error" });
+    }
+});
+
+
+/**
+ * Filter hotels based on rating, price range, and amenities.
+ * 
+ * @route GET /filterHotels
+ * @param {number} minRating - The minimum rating of hotels to filter by (optional).
+ * @param {number} maxRating - The maximum rating of hotels to filter by (optional).
+ * @param {number} minPrice - The minimum price of hotels to filter by (optional).
+ * @param {number} maxPrice - The maximum price of hotels to filter by (optional).
+ * @param {string} amenities - A comma-separated string of amenities to filter hotels (optional).
+ * @returns {object} - Returns a JSON object containing a list of filtered hotels.
+ * @author avmandal
+ */
+app.get('/filterHotels', async (req, res) => {
+    try {
+        const { minRating, maxRating, minPrice, maxPrice, amenities } = req.query;
+
+        let query = {};
+
+        if (minRating && maxRating) {
+            query.ratings = {
+                $gte: parseFloat(minRating),
+                $lte: parseFloat(maxRating)
+            };
+        } else if (minRating) {
+            query.ratings = { $gte: parseFloat(minRating) };
+        } else if (maxRating) {
+            query.ratings = { $lte: parseFloat(maxRating) };
+        }
+
+        if (minPrice && maxPrice) {
+            query.price = { $gte: minPrice, $lte: maxPrice };
+        } else if (minPrice) {
+            query.price = { $gte: minPrice };
+        } else if (maxPrice) {
+            query.price = { $lte: maxPrice };
+        }
+
+        if (amenities) {
+            const amenitiesArray = amenities.split(",").map(item => item.trim());
+            query.amenities = { $all: amenitiesArray }; 
+        }
+
+        const hotels = await Hotel.find(query);
+
+        if (hotels.length === 0) {
+            return res.status(404).json({ "message": "No hotels found" });
+        }
+
+        res.json({ "message": "Hotels filtered successfully", hotels});
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ "error": "Internal Server Error" });
+    }
+});
+
+/**
+ * Upload image URLs for a hotel.
+ * 
+ * @route POST /upload-image-url/:hotelId
+ * @param {string} token - JWT token for user authentication.
+ * @param {array} imageUrls - An array of image URLs to upload for the hotel.
+ * @param {string} hotelId - The ID of the hotel to upload images for.
+ * @returns {object} - Returns a JSON object indicating success or failure of the image upload operation.
+ * @author avmandal
+ */
+app.post('/upload-image-url/:hotelId', async (req, res) => {
+    const { token, imageUrls } = req.body;
+    try {
+        let user = await verifyUserLogIn(token);
+        if (user.error) {
+            return res.status(403).json(user);
+        }
+        const hotelId = req.params.hotelId;
+    
+        if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
+            return res.status(400).json({ error: 'No image URLs provided or invalid format' });
+        }
+    
+        const hotel = await Hotel.findByIdAndUpdate(hotelId, { $push: { hotelImagesURL: { $each: imageUrls } } }, { new: true });
+    
+        if (!hotel) {
+            return res.status(404).json({ error: 'Hotel not found' });
+        }
+    
+        return res.status(200).json({ message: 'Hotel image URLs uploaded successfully', hotel });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+/**
+ * Add a review and rating for a hotel.
+ * 
+ * @route POST /add-review/:hotelId
+ * @param {string} token - JWT token for user authentication.
+ * @param {string} reviewText - The text content of the review.
+ * @param {number} rating - The rating given for the hotel (1-5).
+ * @param {string} hotelId - The ID of the hotel to add the review for.
+ * @returns {object} - Returns a JSON object indicating success or failure of the review addition operation.
+ * @author avmandal
+ */
+app.post('/add-review/:hotelId', async (req, res) => {
+    const { token ,reviewText, rating } = req.body;
+    try {
+    let user = await verifyUserLogIn(token);
+    if (user.error) {
+        return res.status(403).json(user);
+    }
+
+    const hotelId = req.params.hotelId;
+
+    const hotel = await Hotel.findById(hotelId);
+    if (!hotel) {
+      return res.status(404).json({ error: 'Hotel not found' });
+    }
+
+    const newReview = new Review({
+      reviewText: reviewText,
+      rating: rating,
+      userId: user._id
+    });
+
+    await newReview.save();
+    hotel.reviews.push(newReview._id);
+
+    // Calculate the new average rating for the hotel
+    const totalRatings = hotel.reviews.length;
+    const currentTotalRating = hotel.ratings * (totalRatings - 1); // Get the current total rating
+    hotel.ratings = (currentTotalRating + rating) / totalRatings; // Calculate the new average rating
+
+    // Save the updated hotel document
+    await hotel.save();
+
+    return res.status(200).json({ message: 'Review added successfully', hotel });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 app.get('/flights', async (req,res)=>{
     try {
@@ -343,5 +618,20 @@ app.get('/place/recomend', async (req, res) => {
 
     res.json(json)
 }) 
+
+async function verifyUserLogIn(token) {
+    return jwt.verify(token, privateKey, async (err, data) => {
+        if (err) {
+            return { "error": "Unable to verify login" }
+        } else {
+            const loggedInUser = await User.findById(data.id);
+            if (!loggedInUser) {
+                return { "error": "Unable to verify login" }
+            } else {
+                return loggedInUser;
+            }
+        }
+    })
+}
 
 app.listen(3002);
