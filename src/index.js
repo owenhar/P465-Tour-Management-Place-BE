@@ -10,7 +10,7 @@ const privateKey = fs.readFileSync('.private-key')
 const User = require("../models/userModel");
 const Review = require("../models/Review")
 
-const dbUrl = process.env.DB || "mongodb://127.0.0.1:4002/"
+const dbUrl = process.env.DB || "mongodb://localhost:27017"
 console.log(dbUrl);
 
 mongoose.connect(dbUrl).then(() => console.log("MongoDB connected!"))
@@ -550,31 +550,65 @@ app.get('/flights/:id', async (req, res) => {
 });
 
 app.post('/createFlight', async (req, res) => {
-    try{
-        const { flightID, source, destination, miles, pricePerMile, price, favorited } = req.body;
-        if (!mongoose.Types.ObjectId.isValid(source) || !mongoose.Types.ObjectId.isValid(destination)) {
-        return res.json({ "error": "Invalid source or destination ID" });
+    try {
+        const {
+            flightID, airline, flightNumber, source, destination, departureTime,
+            arrivalTime, miles, duration, stops, classType, pricePerMile, price, image
+        } = req.body;
+
+        // Validation for mandatory fields including references, times, and flight specifics
+        if (!source || !destination) {
+            return res.status(400).json({ "error": "Invalid source ID or destination ID" });
         }
-        if (!(flightID && source && destination)) {
-            return res.json({ "error": "Needs fields name, source location, destination location" });
+        if (!(flightID && airline && flightNumber && source && destination && departureTime && arrivalTime && classType)) {
+            return res.status(400).json({ "error": "Missing mandatory fields" });
         }
 
-
-        let newFlight= await Flight.create({
+        let newFlight = await Flight.create({
             flightID,
+            airline,
+            flightNumber,
             source,
             destination,
-            pricePerMile,
-            price,
-            favorited
+            departureTime,
+            arrivalTime,
+            miles, // Optional
+            duration,
+            stops,
+            classType,
+            pricePerMile, // Optional, defaults handled by schema
+            price, // Optional, defaults handled by schema
+            isFavorited: false, // Default as false when creating new
+            image
         });
 
         res.json({ "message": "New Flight created", "id": newFlight._id });
     } catch (error) {
         console.error(error);
-        res.json({ "error": "Internal Server Error" });
+        res.status(500).json({ "error": "Internal Server Error" });
     }
-})
+});
+
+//Delete Flight 
+app.delete('/deleteFlight/:id', async (req, res) => {
+    try {
+        const { id } = req.params; // Get the flightID from the URL parameters
+
+        // Use the delete operation appropriate for your database
+        const flight= await Flight.findById(id);
+        if (!flight) {
+            return res.json({ "message": "Flight not found" });
+        }
+
+        // Delete the hotel
+        await flight.deleteOne();
+
+        res.json({ "message": "Flight deleted successfully" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ "error": "Internal Server Error" });
+    }
+});
 
 
 // Get details of a thing to do by ID

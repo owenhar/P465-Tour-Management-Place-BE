@@ -6,6 +6,14 @@ const flightSchema = new mongoose.Schema({
         unique: true,
         required: true
     },
+    airline: {
+        type: String,
+        required: true
+    },
+    flightNumber: {
+        type: String,
+        required: true
+    },
     source: {
         type: mongoose.Schema.Types.ObjectID,
         ref:'Place',
@@ -16,7 +24,25 @@ const flightSchema = new mongoose.Schema({
         ref:'Place',
         required: true
     },
+    departureTime: {
+        type: String,
+        required: true
+    },
+    arrivalTime: {
+        type: String,
+        required: true
+    },
+    classType:{
+        type: String,
+        required:true
+    },
     miles: {
+        type: Number,
+    },
+    duration:{
+        type: Number,
+    },
+    stops:{
         type: Number,
     },
     pricePerMile: {
@@ -31,6 +57,10 @@ const flightSchema = new mongoose.Schema({
         type: String,
         default: "No"
     },
+    image:{
+        type: String,
+        default: "spirit-logo.jpg"
+    }
 }, { timestamps: true });
 
 module.exports = mongoose.model("Flight", flightSchema);
