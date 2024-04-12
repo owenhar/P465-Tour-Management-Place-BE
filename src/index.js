@@ -341,34 +341,49 @@ app.delete('/deleteHotels/:id', async (req, res) => {
  * @param {number} maxPrice - The maximum price of the hotel (optional).
  * @param {string} amenities - A comma-separated string of amenities to filter hotels (optional).
  * @returns {object} - Returns a JSON object containing a list of hotels matching the search criteria.
- * @author avmandal
+ * @author avmandal, ysampath
  */
+// Define the route handler for searching hotels
 app.get('/searchHotels', async (req, res) => {
+    //find place id
+  async function findPlaceID(queryString) {
     try {
-        const { location, minPrice, maxPrice, amenities } = req.query;
+        // Search for a place where the name, city, state, or country matches the query string
+        const place = await Place.findOne({
+            $or: [
+                { name: { $regex: new RegExp(queryString, 'i') } }, // 'i' flag for case-insensitive search
+                { city: { $regex: new RegExp(queryString, 'i') } },
+                { state: { $regex: new RegExp(queryString, 'i') } },
+                { country: { $regex: new RegExp(queryString, 'i') } }
+            ]
+        });
+        if (place) {
+            // Return the place ID if a match is found
+            return place._id;
 
+        } else {
+            // Return null or an appropriate value if no match is found
+            return null;
+        }
+    } catch (error) {
+        // Handle any errors that occur during the database query
+        console.error("Error finding place:", error);
+        return null;
+    }
+}
+    try {
+        const { location } = req.query;
         let query = {};
-
+        let placeID1=null;
         if (location) {
-            if (!mongoose.Types.ObjectId.isValid(location)) {
-                return res.status(403).json({ "error": "Invalid location" });
-            }
-            query.location = new mongoose.Types.ObjectId(location);
+            // Use findPlaceID to get the place ID corresponding to the location
+            placeID1 = await findPlaceID(location);
+            if (placeID1) {
+            query.location = placeID1;
+            } else {
+               return res.status(404).json({ "message": "No place found matching the location" });
+         }
         }
-
-        if (minPrice && maxPrice) {
-            query.price = { $gte: minPrice, $lte: maxPrice };
-        } else if (minPrice) {
-            query.price = { $gte: minPrice };
-        } else if (maxPrice) {
-            query.price = { $lte: maxPrice };
-        }
-
-        if (amenities) {
-            const amenitiesArray = amenities.split(/\s*,\s*/).map(item => item.trim());
-            query.amenities = { $in: amenitiesArray };
-        }
-
         const hotels = await Hotel.find(query);
 
         if (hotels.length === 0) {
@@ -376,6 +391,7 @@ app.get('/searchHotels', async (req, res) => {
         }
 
         res.json({ "message": "Hotels retrieved successfully", hotels });
+        return hotels;
     } catch (error) {
         console.error(error);
         res.status(500).json({ "error": "Internal Server Error" });
@@ -635,5 +651,6 @@ async function verifyUserLogIn(token) {
         }
     })
 }
+
 
 app.listen(3002);
