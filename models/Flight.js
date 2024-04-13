@@ -59,7 +59,7 @@ const flightSchema = new mongoose.Schema({
     },
     image:{
         type: String,
-        default: "spirit-logo.jpg"
+        default: ""
     }
 }, { timestamps: true });
 

@@ -526,7 +526,7 @@ app.post('/add-review/:hotelId', async (req, res) => {
 
 app.get('/flights', async (req,res)=>{
     try {
-        const flights = await Flight.find();
+        const flights = await Flight.find().populate('source').populate('destination').exec();
 
         res.json({ "message": "Flights retrived successfully", flights });
     } catch (error) {
