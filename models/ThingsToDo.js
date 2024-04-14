@@ -14,7 +14,7 @@ const thingsToDoSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    pictureURL: {
+    image: {
         type: String,
         default: ""
     },
@@ -35,6 +35,24 @@ const thingsToDoSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Review'
     }],
+    startTime: {
+        type: String,
+    },
+    maxGuests: {
+        type: Number,
+        default:10
+    },
+    classType: {
+        type: String,
+        default:""
+    },
+    type: {
+        type: String,
+        default: ""
+    },
+    date:{
+        type: String
+    }
 }, { timestamps: true });
 
 module.exports = mongoose.model("ThingsToDo", thingsToDoSchema);

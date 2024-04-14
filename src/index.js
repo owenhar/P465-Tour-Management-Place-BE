@@ -4,13 +4,14 @@ const mongoose = require('mongoose');
 const Place = require('../models/Place')
 const Hotel = require('../models/Hotel')
 const Flight = require('../models/Flight')
+const ThingsToDo = require('../models/ThingsToDo')
 const jwt = require("jsonwebtoken");
 const fs = require('fs');
 const privateKey = fs.readFileSync('.private-key')
 const User = require("../models/userModel");
 const Review = require("../models/Review")
 
-const dbUrl = process.env.DB || "mongodb://127.0.0.1:4002/"
+const dbUrl = process.env.DB || "mongodb://localhost:27017"
 console.log(dbUrl);
 
 mongoose.connect(dbUrl).then(() => console.log("MongoDB connected!"))
@@ -526,7 +527,7 @@ app.post('/add-review/:hotelId', async (req, res) => {
 
 app.get('/flights', async (req,res)=>{
     try {
-        const flights = await Flight.find();
+        const flights = await Flight.find().populate('source').populate('destination').exec();
 
         res.json({ "message": "Flights retrived successfully", flights });
     } catch (error) {
@@ -550,26 +551,72 @@ app.get('/flights/:id', async (req, res) => {
 });
 
 app.post('/createFlight', async (req, res) => {
-    try{
-        const { flightID, source, destination, miles, pricePerMile, price, favorited } = req.body;
-        if (!mongoose.Types.ObjectId.isValid(source) || !mongoose.Types.ObjectId.isValid(destination)) {
-        return res.json({ "error": "Invalid source or destination ID" });
+    try {
+        const {
+            flightID, airline, flightNumber, source, destination, departureTime,
+            arrivalTime, miles, duration, stops, classType, pricePerMile, price, image
+        } = req.body;
+
+        // Validation for mandatory fields including references, times, and flight specifics
+        if (!source || !destination) {
+            return res.status(400).json({ "error": "Invalid source ID or destination ID" });
         }
-        if (!(flightID && source && destination)) {
-            return res.json({ "error": "Needs fields name, source location, destination location" });
+        if (!(flightID && airline && flightNumber && source && destination && departureTime && arrivalTime && classType)) {
+            return res.status(400).json({ "error": "Missing mandatory fields" });
         }
 
-
-        let newFlight= await Flight.create({
+        let newFlight = await Flight.create({
             flightID,
+            airline,
+            flightNumber,
             source,
             destination,
-            pricePerMile,
-            price,
-            favorited
+            departureTime,
+            arrivalTime,
+            miles, // Optional
+            duration,
+            stops,
+            classType,
+            pricePerMile, // Optional, defaults handled by schema
+            price, // Optional, defaults handled by schema
+            isFavorited: false, // Default as false when creating new
+            image
         });
 
         res.json({ "message": "New Flight created", "id": newFlight._id });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ "error": "Internal Server Error" });
+    }
+});
+
+//Delete Flight 
+app.delete('/deleteFlight/:id', async (req, res) => {
+    try {
+        const { id } = req.params; // Get the flightID from the URL parameters
+
+        // Use the delete operation appropriate for your database
+        const flight= await Flight.findById(id);
+        if (!flight) {
+            return res.json({ "message": "Flight not found" });
+        }
+
+        // Delete the hotel
+        await flight.deleteOne();
+
+        res.json({ "message": "Flight deleted successfully" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ "error": "Internal Server Error" });
+    }
+});
+
+//Get all activities
+app.get('/activities', async (req, res) => {
+    try {
+        const activities = await ThingsToDo.find();
+
+        res.json({ "message": "Activities retrived successfully", activities});
     } catch (error) {
         console.error(error);
         res.json({ "error": "Internal Server Error" });
@@ -591,6 +638,66 @@ app.get('/things-to-do/:id', async (req, res) => {
         res.json({ "error": "Internal Server Error" });
     }
 });
+
+//Create a new activity
+app.post('/createActivity', async (req, res) => {
+    try {
+        const {
+            thingsToDoID, name, location, price, description, favorited, ratings, reviews,
+            startTime, maxGuests, classType, type, date, image
+        } = req.body;
+
+        // Validation for mandatory fields
+        if (!name || !location) {
+            return res.status(400).json({ "error": "Name and location are required" });
+        }
+
+        let newActivity = await ThingsToDo.create({
+            thingsToDoID,
+            name,
+            location,
+            price, // Optional, defaults handled by schema
+            description, // Optional
+            favorited, // Optional, defaults to "No"
+            ratings, // Optional, defaults to 0
+            reviews, // Optional
+            startTime, // Optional
+            maxGuests, // Optional, defaults to 10
+            classType, // Optional, defaults to empty string
+            type, // Optional, defaults to empty string
+            date, // Optional
+            image // Optional, defaults to empty string
+        });
+
+        res.json({ "message": "New Activity created", "id": newActivity._id });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ "error": "Internal Server Error" });
+    }
+});
+
+//Delete an activity by Id
+app.delete('/deleteActivity/:id', async (req, res) => {
+    try {
+        const { id } = req.params; // Get the activity ID from the URL parameters
+
+        // Use the delete operation appropriate for your database
+        const activity = await ThingsToDo.findById(id);
+        if (!activity) {
+            return res.json({ "message": "Activity not found" });
+        }
+
+        // Delete the activity
+        await activity.deleteOne();
+
+        res.json({ "message": "Activity deleted successfully" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ "error": "Internal Server Error" });
+    }
+});
+
+
 
 app.get('/place/recomend', async (req, res) => {
     const ip = req.socket.remoteAddress;
