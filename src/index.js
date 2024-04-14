@@ -647,29 +647,29 @@ async function verifyUserLogIn(token) {
  */
  app.post('/add-review/:placeId', async (req, res) => {
     const { token ,reviewText, rating } = req.body;
+    const { placeId } = req.params;
+
     try {
         let user = await verifyUserLogIn(token);
         if (user.error) {
             return res.status(403).json(user);
         }
-        const placeId = req.params.placeId;
         const place = await Place.findById(placeId);
         if (!place) {
             return res.status(404).json({ error: 'Place not found' });
         }
 
         const newReview = new Review({
-            reviewText: reviewText,
-            rating: rating,
+            reviewText,
+            rating,
             userId: user._id
         });
         await newReview.save();
         place.reviews.push(newReview._id);
 
         // Update average rating for the place
-        const totalRatings = place.reviews.length;
-        const currentTotalRating = place.ratings * (totalRatings - 1); // Get the current total rating
-        place.ratings = (currentTotalRating + rating) / totalRatings; // Calculate the new average rating
+        const updatedRatings = (place.ratings * place.reviews.length + rating) / (place.reviews.length + 1);
+        place.ratings = updatedRatings;
 
         await place.save();
         return res.status(200).json({ message: 'Review added successfully', place });
