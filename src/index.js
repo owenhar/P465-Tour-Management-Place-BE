@@ -220,7 +220,7 @@ app.post('/createHotel', async (req, res) => {
 //Retrieve all hotels saved in the database
 app.get('/hotels/', async (req,res)=>{
     try {
-        const hotels = await Hotel.find();
+        const hotels = await Hotel.find().populate('location').exec();
 
         res.json({ "message": "Hotels retrived successfully", hotels });
     } catch (error) {
@@ -233,7 +233,7 @@ app.get('/hotels/', async (req,res)=>{
 app.get('/hotels/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const hotel = await Hotel.findById(id);
+        const hotel = await Hotel.findById(id).populate('location').exec();
         if (!hotel) {
             return res.json({ "message": "Hotel not found" });
         }
@@ -539,7 +539,7 @@ app.get('/flights', async (req,res)=>{
 app.get('/flights/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const flight = await Flight.findById(id);
+        const flight = await Flight.findById(id).populate('source').populate('destination').exec();
         if (!flight) {
             return res.json({ "message": "Flight not found" });
         }
@@ -614,7 +614,7 @@ app.delete('/deleteFlight/:id', async (req, res) => {
 //Get all activities
 app.get('/activities', async (req, res) => {
     try {
-        const activities = await ThingsToDo.find();
+        const activities = await ThingsToDo.find().populate('location').exec();
 
         res.json({ "message": "Activities retrived successfully", activities});
     } catch (error) {
@@ -628,7 +628,7 @@ app.get('/activities', async (req, res) => {
 app.get('/things-to-do/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const thingToDo = await ThingsToDo.findById(id);
+        const thingToDo = await ThingsToDo.findById(id).populate('location').exec();
         if (!thingToDo) {
             return res.json({ "message": "Thing to do not found" });
         }
@@ -721,7 +721,7 @@ app.get('/place/recomend', async (req, res) => {
         places = places.sort((a,b) => {
             console.log(b.distance, a.distance, b.distance - a.distance);
             return a.distance - b.distance});
-        return res.json(places)
+        return res.json(places.splice(0,3))
     }
 
 
