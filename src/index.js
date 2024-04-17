@@ -7,7 +7,7 @@ const Flight = require('../models/Flight')
 const ThingsToDo = require('../models/ThingsToDo')
 const jwt = require("jsonwebtoken");
 const fs = require('fs');
-const privateKey = fs.readFileSync('.private-key')
+const privateKey = null //fs.readFileSync('.private-key') Temporary change
 const User = require("../models/userModel");
 const Review = require("../models/Review")
 
