@@ -722,6 +722,8 @@ app.get('/place/recomend', async (req, res) => {
     const ip = req.socket.remoteAddress;
     const response = await fetch(`http://ip-api.com/json/${ip}`);
     const json = await response.json();
+
+    console.log(JSON.stringify(req.headers));
     
     if (json.status == "fail") {
         return res.json({"error": "error", "randomPlaces": []})
