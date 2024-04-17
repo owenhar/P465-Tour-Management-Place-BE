@@ -4,13 +4,14 @@ const mongoose = require('mongoose');
 const Place = require('../models/Place')
 const Hotel = require('../models/Hotel')
 const Flight = require('../models/Flight')
+const ThingsToDo = require('../models/ThingsToDo')
 const jwt = require("jsonwebtoken");
 const fs = require('fs');
 const privateKey = fs.readFileSync('.private-key')
 const User = require("../models/userModel");
 const Review = require("../models/Review")
 
-const dbUrl = process.env.DB || "mongodb://127.0.0.1:4002/"
+const dbUrl = process.env.DB || "mongodb://localhost:27017"
 console.log(dbUrl);
 
 mongoose.connect(dbUrl).then(() => console.log("MongoDB connected!"))
@@ -219,7 +220,7 @@ app.post('/createHotel', async (req, res) => {
 //Retrieve all hotels saved in the database
 app.get('/hotels/', async (req,res)=>{
     try {
-        const hotels = await Hotel.find();
+        const hotels = await Hotel.find().populate('location').exec();
 
         res.json({ "message": "Hotels retrived successfully", hotels });
     } catch (error) {
@@ -232,7 +233,7 @@ app.get('/hotels/', async (req,res)=>{
 app.get('/hotels/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const hotel = await Hotel.findById(id);
+        const hotel = await Hotel.findById(id).populate('location').exec();
         if (!hotel) {
             return res.json({ "message": "Hotel not found" });
         }
@@ -542,7 +543,7 @@ app.post('/add-review/:hotelId', async (req, res) => {
 
 app.get('/flights', async (req,res)=>{
     try {
-        const flights = await Flight.find();
+        const flights = await Flight.find().populate('source').populate('destination').exec();
 
         res.json({ "message": "Flights retrived successfully", flights });
     } catch (error) {
@@ -554,7 +555,7 @@ app.get('/flights', async (req,res)=>{
 app.get('/flights/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const flight = await Flight.findById(id);
+        const flight = await Flight.findById(id).populate('source').populate('destination').exec();
         if (!flight) {
             return res.json({ "message": "Flight not found" });
         }
@@ -566,26 +567,72 @@ app.get('/flights/:id', async (req, res) => {
 });
 
 app.post('/createFlight', async (req, res) => {
-    try{
-        const { flightID, source, destination, miles, pricePerMile, price, favorited } = req.body;
-        if (!mongoose.Types.ObjectId.isValid(source) || !mongoose.Types.ObjectId.isValid(destination)) {
-        return res.json({ "error": "Invalid source or destination ID" });
+    try {
+        const {
+            flightID, airline, flightNumber, source, destination, departureTime,
+            arrivalTime, miles, duration, stops, classType, pricePerMile, price, image
+        } = req.body;
+
+        // Validation for mandatory fields including references, times, and flight specifics
+        if (!source || !destination) {
+            return res.status(400).json({ "error": "Invalid source ID or destination ID" });
         }
-        if (!(flightID && source && destination)) {
-            return res.json({ "error": "Needs fields name, source location, destination location" });
+        if (!(flightID && airline && flightNumber && source && destination && departureTime && arrivalTime && classType)) {
+            return res.status(400).json({ "error": "Missing mandatory fields" });
         }
 
-
-        let newFlight= await Flight.create({
+        let newFlight = await Flight.create({
             flightID,
+            airline,
+            flightNumber,
             source,
             destination,
-            pricePerMile,
-            price,
-            favorited
+            departureTime,
+            arrivalTime,
+            miles, // Optional
+            duration,
+            stops,
+            classType,
+            pricePerMile, // Optional, defaults handled by schema
+            price, // Optional, defaults handled by schema
+            isFavorited: false, // Default as false when creating new
+            image
         });
 
         res.json({ "message": "New Flight created", "id": newFlight._id });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ "error": "Internal Server Error" });
+    }
+});
+
+//Delete Flight 
+app.delete('/deleteFlight/:id', async (req, res) => {
+    try {
+        const { id } = req.params; // Get the flightID from the URL parameters
+
+        // Use the delete operation appropriate for your database
+        const flight= await Flight.findById(id);
+        if (!flight) {
+            return res.json({ "message": "Flight not found" });
+        }
+
+        // Delete the hotel
+        await flight.deleteOne();
+
+        res.json({ "message": "Flight deleted successfully" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ "error": "Internal Server Error" });
+    }
+});
+
+//Get all activities
+app.get('/activities', async (req, res) => {
+    try {
+        const activities = await ThingsToDo.find().populate('location').exec();
+
+        res.json({ "message": "Activities retrived successfully", activities});
     } catch (error) {
         console.error(error);
         res.json({ "error": "Internal Server Error" });
@@ -597,7 +644,7 @@ app.post('/createFlight', async (req, res) => {
 app.get('/things-to-do/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const thingToDo = await ThingsToDo.findById(id);
+        const thingToDo = await ThingsToDo.findById(id).populate('location').exec();
         if (!thingToDo) {
             return res.json({ "message": "Thing to do not found" });
         }
@@ -607,6 +654,66 @@ app.get('/things-to-do/:id', async (req, res) => {
         res.json({ "error": "Internal Server Error" });
     }
 });
+
+//Create a new activity
+app.post('/createActivity', async (req, res) => {
+    try {
+        const {
+            thingsToDoID, name, location, price, description, favorited, ratings, reviews,
+            startTime, maxGuests, classType, type, date, image
+        } = req.body;
+
+        // Validation for mandatory fields
+        if (!name || !location) {
+            return res.status(400).json({ "error": "Name and location are required" });
+        }
+
+        let newActivity = await ThingsToDo.create({
+            thingsToDoID,
+            name,
+            location,
+            price, // Optional, defaults handled by schema
+            description, // Optional
+            favorited, // Optional, defaults to "No"
+            ratings, // Optional, defaults to 0
+            reviews, // Optional
+            startTime, // Optional
+            maxGuests, // Optional, defaults to 10
+            classType, // Optional, defaults to empty string
+            type, // Optional, defaults to empty string
+            date, // Optional
+            image // Optional, defaults to empty string
+        });
+
+        res.json({ "message": "New Activity created", "id": newActivity._id });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ "error": "Internal Server Error" });
+    }
+});
+
+//Delete an activity by Id
+app.delete('/deleteActivity/:id', async (req, res) => {
+    try {
+        const { id } = req.params; // Get the activity ID from the URL parameters
+
+        // Use the delete operation appropriate for your database
+        const activity = await ThingsToDo.findById(id);
+        if (!activity) {
+            return res.json({ "message": "Activity not found" });
+        }
+
+        // Delete the activity
+        await activity.deleteOne();
+
+        res.json({ "message": "Activity deleted successfully" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ "error": "Internal Server Error" });
+    }
+});
+
+
 
 app.get('/place/recomend', async (req, res) => {
     const ip = req.socket.remoteAddress;
@@ -630,7 +737,7 @@ app.get('/place/recomend', async (req, res) => {
         places = places.sort((a,b) => {
             console.log(b.distance, a.distance, b.distance - a.distance);
             return a.distance - b.distance});
-        return res.json(places)
+        return res.json(places.splice(0,3))
     }
 
 
@@ -652,5 +759,49 @@ async function verifyUserLogIn(token) {
     })
 }
 
+/**
+ * Add a review and rating for a place.
+ * 
+ * @route POST /add-review/:placeId
+ * @param {string} token - JWT token for user authentication.
+ * @param {string} reviewText - The text content of the review.
+ * @param {number} rating - The rating given for the place (1-5).
+ * @param {string} placeId - The ID of the place to add the review for.
+ * @returns {object} - Returns a JSON object indicating success or failure of the review addition operation.
+ * @author avmandal
+ */
+ app.post('/add-review/:placeId', async (req, res) => {
+    const { token ,reviewText, rating } = req.body;
+    const { placeId } = req.params;
+
+    try {
+        let user = await verifyUserLogIn(token);
+        if (user.error) {
+            return res.status(403).json(user);
+        }
+        const place = await Place.findById(placeId);
+        if (!place) {
+            return res.status(404).json({ error: 'Place not found' });
+        }
+
+        const newReview = new Review({
+            reviewText,
+            rating,
+            userId: user._id
+        });
+        await newReview.save();
+        place.reviews.push(newReview._id);
+
+        // Update average rating for the place
+        const updatedRatings = (place.ratings * place.reviews.length + rating) / (place.reviews.length + 1);
+        place.ratings = updatedRatings;
+
+        await place.save();
+        return res.status(200).json({ message: 'Review added successfully', place });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
 
 app.listen(3002);
