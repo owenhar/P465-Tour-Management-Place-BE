@@ -719,7 +719,7 @@ app.delete('/deleteActivity/:id', async (req, res) => {
 
 
 app.get('/place/recomend', async (req, res) => {
-    const ip = req.socket.remoteAddress;
+    const ip = req.get("x-real-ip") || req.socket.remoteAddress;
     const response = await fetch(`http://ip-api.com/json/${ip}`);
     const json = await response.json();
 
