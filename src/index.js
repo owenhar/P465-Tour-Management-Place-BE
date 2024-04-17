@@ -12,9 +12,12 @@ const User = require("../models/userModel");
 const Review = require("../models/Review")
 
 const dbUrl = process.env.DB || "mongodb://localhost:27017"
+const user = process.env.DBUSER;
+const password = process.env.DBPASS;
 console.log(dbUrl);
 
-mongoose.connect(dbUrl).then(() => console.log("MongoDB connected!"))
+if (user && password) mongoose.connect(dbUrl, {"auth": {"authSource": "admin"}, "user": user, "pass": password, "dbName": "admin"}).then(() => console.log("MongoDB connected!"));
+else mongoose.connect(dbUrl).then(() => console.log("MongoDB connected!"));
 const app = express();
 app.use(cors())
 app.use(express.json())
