@@ -96,7 +96,7 @@ app.post('/createPlace', async (req, res) => {
 // Get all places
 app.get('/places', async (req, res) => {
     try {
-        const places = await Place.find();
+        const places = await Place.find().populate('reviews').exec();
 
         res.json({ "message": "Places retrived successfully", places });
     } catch (error) {
@@ -109,7 +109,7 @@ app.get('/places', async (req, res) => {
 app.get('/places/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const place = await Place.findById(id)
+        const place = await Place.findById(id).populate('reviews').exec();
 
         if (!place) {
             return res.json({ "message": "Place not found" });
@@ -154,7 +154,7 @@ app.delete('/places/:id', async (req, res) => {
 // Get 6 random places for the home screen
 app.get('/place/home', async (req, res) => {
     try{
-        const randomPlaces = await Place.aggregate([{ $sample: { size: 6 } }]);
+        const randomPlaces = await Place.aggregate([{ $sample: { size: 6 } }]).populate('reviews').exec();
         res.json({ "message": "6 Random Places Found", randomPlaces });
     } catch (error) {
         console.error(error);
@@ -166,7 +166,7 @@ app.get('/place/home', async (req, res) => {
 app.get('/place/search', async (req, res) => {
     try{
         const query = req.query.q;
-        const places = await Place.find({ searchTags: { $regex: query, $options: 'i' } });
+        const places = await Place.find({ searchTags: { $regex: query, $options: 'i' } }).populate('reviews').exec();
         res.json({ "message": "Places retrieved successfully", places });
     } catch (error) {
         console.error(error);
