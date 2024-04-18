@@ -154,7 +154,7 @@ app.delete('/places/:id', async (req, res) => {
 // Get 6 random places for the home screen
 app.get('/place/home', async (req, res) => {
     try{
-        const randomPlaces = await Place.aggregate([{ $sample: { size: 6 } }]).populate('reviews').exec();
+        const randomPlaces = await Place.aggregate([{ $sample: { size: 6 } }]);
         res.json({ "message": "6 Random Places Found", randomPlaces });
     } catch (error) {
         console.error(error);
