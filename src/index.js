@@ -750,18 +750,18 @@ app.get('/place/recomend', async (req, res) => {
 }) 
 
 async function verifyUserLogIn(token) {
-    return jwt.verify(token, privateKey, async (err, data) => {
-        if (err) {
-            return { "error": "Unable to verify login" }
-        } else {
-            const loggedInUser = await User.findById(data.id);
-            if (!loggedInUser) {
-                return { "error": "Unable to verify login" }
-            } else {
-                return loggedInUser;
-            }
-        }
-    })
+    const response = await fetch("https://auth.harrisowe.me/verify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          "token": token
+        })
+      });
+    const json = await response.json();
+    return json;
+    
 }
 
 /**
