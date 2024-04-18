@@ -798,7 +798,7 @@ async function verifyUserLogIn(token) {
         place.reviews.push(newReview._id);
 
         // Update average rating for the place
-        const updatedRatings = (place.ratings * place.reviews.length + rating) / (place.reviews.length + 1);
+        const updatedRatings = (place.ratings * (place.reviews.length - 1) + rating) / (place.reviews.length);
         place.ratings = updatedRatings;
 
         await place.save();
