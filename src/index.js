@@ -505,7 +505,7 @@ app.post('/upload-image-url/:hotelId', async (req, res) => {
  * @returns {object} - Returns a JSON object indicating success or failure of the review addition operation.
  * @author avmandal
  */
-app.post('/add-review/:hotelId', async (req, res) => {
+app.post('/add-review-hotel/:hotelId', async (req, res) => {
     const { token ,reviewText, rating } = req.body;
     try {
     let user = await verifyUserLogIn(token);
@@ -775,7 +775,7 @@ async function verifyUserLogIn(token) {
  * @returns {object} - Returns a JSON object indicating success or failure of the review addition operation.
  * @author avmandal
  */
- app.post('/add-review/:placeId', async (req, res) => {
+ app.post('/add-review-place/:placeId', async (req, res) => {
     const { token ,reviewText, rating } = req.body;
     const { placeId } = req.params;
 
