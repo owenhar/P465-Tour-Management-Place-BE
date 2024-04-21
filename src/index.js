@@ -506,43 +506,49 @@ app.post('/upload-image-url/:hotelId', async (req, res) => {
  * @author avmandal
  */
 app.post('/add-review-hotel/:hotelId', async (req, res) => {
-    const { token ,reviewText, rating } = req.body;
+  const { token ,reviewText, rating } = req.body;
+
     try {
-    let user = await verifyUserLogIn(token);
-    if (user.error) {
-        return res.status(403).json(user);
+        let user = await verifyUserLogIn(token);
+        if (user.error) {
+            return res.status(403).json(user);
+        }
+        const hotel = await Hotel.findById(req.params.hotelId);
+        if (!hotel) {
+            return res.status(404).json({ error: 'Hotel not found' });
+        }
+
+        const newReview = new Review({
+            reviewText,
+            rating,
+            userId: user._id
+        });
+        await newReview.save();
+
+        // Push the new review
+        hotel.reviews.push(newReview._id);
+
+        // Recalculate rating
+        await recalculateRating(req.params.hotelId);
+
+        // Save the updated hotel document
+        await hotel.save();
+        return res.status(200).json({ message: 'Review added successfully', hotel });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: 'Internal server error' });
     }
-
-    const hotelId = req.params.hotelId;
-
-    const hotel = await Hotel.findById(hotelId);
-    if (!hotel) {
-      return res.status(404).json({ error: 'Hotel not found' });
-    }
-
-    const newReview = new Review({
-      reviewText: reviewText,
-      rating: rating,
-      userId: user._id
-    });
-
-    await newReview.save();
-    hotel.reviews.push(newReview._id);
-
-    // Calculate the new average rating for the hotel
-    const totalRatings = hotel.reviews.length;
-    const currentTotalRating = hotel.ratings * (totalRatings - 1); // Get the current total rating
-    hotel.ratings = (currentTotalRating + rating) / totalRatings; // Calculate the new average rating
-
-    // Save the updated hotel document
-    await hotel.save();
-
-    return res.status(200).json({ message: 'Review added successfully', hotel });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
 });
+
+// Function to recalculate the ratings of a hotel
+async function recalculateRating(hotelId) {
+    const hotel = await Hotel.findById(hotelId).populate('reviews');
+    if (!hotel) return;
+
+    const totalRating = hotel.reviews.reduce((acc, review) => acc + review.rating, 0);
+    hotel.ratings = totalRating / hotel.reviews.length;
+    await hotel.save();
+}
 
 app.get('/flights', async (req,res)=>{
     try {
