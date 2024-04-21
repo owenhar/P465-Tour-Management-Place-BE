@@ -506,43 +506,49 @@ app.post('/upload-image-url/:hotelId', async (req, res) => {
  * @author avmandal
  */
 app.post('/add-review-hotel/:hotelId', async (req, res) => {
-    const { token ,reviewText, rating } = req.body;
+  const { token ,reviewText, rating } = req.body;
+
     try {
-    let user = await verifyUserLogIn(token);
-    if (user.error) {
-        return res.status(403).json(user);
+        let user = await verifyUserLogIn(token);
+        if (user.error) {
+            return res.status(403).json(user);
+        }
+        const hotel = await Hotel.findById(req.params.hotelId);
+        if (!hotel) {
+            return res.status(404).json({ error: 'Hotel not found' });
+        }
+
+        const newReview = new Review({
+            reviewText,
+            rating,
+            userId: user._id
+        });
+        await newReview.save();
+
+        // Push the new review
+        hotel.reviews.push(newReview._id);
+
+        // Recalculate rating
+        await recalculateRating(req.params.hotelId);
+
+        // Save the updated hotel document
+        await hotel.save();
+        return res.status(200).json({ message: 'Review added successfully', hotel });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: 'Internal server error' });
     }
-
-    const hotelId = req.params.hotelId;
-
-    const hotel = await Hotel.findById(hotelId);
-    if (!hotel) {
-      return res.status(404).json({ error: 'Hotel not found' });
-    }
-
-    const newReview = new Review({
-      reviewText: reviewText,
-      rating: rating,
-      userId: user._id
-    });
-
-    await newReview.save();
-    hotel.reviews.push(newReview._id);
-
-    // Calculate the new average rating for the hotel
-    const totalRatings = hotel.reviews.length;
-    const currentTotalRating = hotel.ratings * (totalRatings - 1); // Get the current total rating
-    hotel.ratings = (currentTotalRating + rating) / totalRatings; // Calculate the new average rating
-
-    // Save the updated hotel document
-    await hotel.save();
-
-    return res.status(200).json({ message: 'Review added successfully', hotel });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
 });
+
+// Function to recalculate the ratings of a hotel
+async function recalculateRating(hotelId) {
+    const hotel = await Hotel.findById(hotelId).populate('reviews');
+    if (!hotel) return;
+
+    const totalRating = hotel.reviews.reduce((acc, review) => acc + review.rating, 0);
+    hotel.ratings = totalRating / hotel.reviews.length;
+    await hotel.save();
+}
 
 app.get('/flights', async (req,res)=>{
     try {
@@ -764,6 +770,17 @@ async function verifyUserLogIn(token) {
     
 }
 
+// Route to get all reviews
+app.get('reviews', async (req, res) => {
+    try {
+        const reviews = await Review.find().populate('userId').exec();
+        res.json({ "message": "Reviews retrieved successfully", reviews });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ "error": "Internal Server Error" });
+    }
+});
+
 /**
  * Add a review and rating for a place.
  * 
@@ -773,7 +790,6 @@ async function verifyUserLogIn(token) {
  * @param {number} rating - The rating given for the place (1-5).
  * @param {string} placeId - The ID of the place to add the review for.
  * @returns {object} - Returns a JSON object indicating success or failure of the review addition operation.
- * @author avmandal
  */
  app.post('/add-review-place/:placeId', async (req, res) => {
     const { token ,reviewText, rating } = req.body;
@@ -795,11 +811,9 @@ async function verifyUserLogIn(token) {
             userId: user._id
         });
         await newReview.save();
-        place.reviews.push(newReview._id);
 
-        // Update average rating for the place
-        const updatedRatings = (place.ratings * (place.reviews.length - 1) + rating) / (place.reviews.length);
-        place.ratings = updatedRatings;
+        // Push the new review
+        place.reviews.push(newReview._id);
 
         await place.save();
         return res.status(200).json({ message: 'Review added successfully', place });
@@ -808,5 +822,45 @@ async function verifyUserLogIn(token) {
         return res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+app.post('/recalculate-rating/:placeId', async (req, res) => {
+    const { placeId } = req.params;
+
+    try {
+        const place = await Place.findById(placeId).populate('reviews');
+        if (!place) {
+            return res.status(404).json({ message: 'Place not found' });
+        }
+
+        const totalRating = place.reviews.reduce((acc, review) => acc + review.rating, 0);
+        const averageRating = (place.reviews.length > 0) ? (totalRating / place.reviews.length) : 0;
+
+        place.ratings = Math.round((averageRating + Number.EPSILON) * 10) / 10;
+        await place.save();
+
+        return res.status(200).json({ message: 'Rating recalculated successfully', ratings: place.ratings });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.delete('/delete-review/:reviewId', async (req, res) => {
+    const { reviewId } = req.params;
+
+    try {
+        const review = await Review.findById(reviewId);
+        if (!review) {
+            return res.status(404).json({ message: "Review not found" });
+        }
+
+        await Review.findByIdAndDelete(reviewId);
+        res.json({ message: "Review deleted successfully" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
 
 app.listen(3002);
