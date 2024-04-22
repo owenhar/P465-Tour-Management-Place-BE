@@ -528,11 +528,12 @@ app.post('/add-review-hotel/:hotelId', async (req, res) => {
         // Push the new review
         hotel.reviews.push(newReview._id);
 
+        await hotel.save();
+
         // Recalculate rating
         await recalculateRating(req.params.hotelId);
 
         // Save the updated hotel document
-        await hotel.save();
         return res.status(200).json({ message: 'Review added successfully', hotel });
     } catch (error) {
         console.error(error);
